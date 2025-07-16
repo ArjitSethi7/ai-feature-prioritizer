@@ -14,17 +14,28 @@ framework = st.selectbox("Select framework", ["RICE"])
 def query_openrouter(prompt):
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "HTTP-Referer": "https://ai-feature-priotitizer-bhvtjkhnqpvyc3lsebny2b.streamlit.app/",  # Required for free tier
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://ai-feature-priotitizer-bhvtjkhnqpvyc3lsebny2b.streamlit.app"  # MUST match your Streamlit app domain
     }
-    data = {
-        "model": "mistralai/mistral-7b-instruct",  # You can change model here
+
+    payload = {
+        "model": "mistralai/mistral-7b-instruct",
         "messages": [
             {"role": "user", "content": prompt}
         ]
     }
-    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
-    return response.json()
+
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers=headers,
+        json=payload
+    )
+
+    try:
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        st.error("⚠️ OpenRouter error: " + str(response.text))
+        return "Error: could not fetch response."
 
 if st.button("Prioritize"):
     if not features_input.strip():
