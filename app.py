@@ -6,8 +6,6 @@ from dotenv import load_dotenv
 load_dotenv()
 api_key = st.secrets["OPENROUTER_API_KEY"]
 
-st.write("🔐 API key loaded:", api_key[:8] + "...")
-
 st.title("🧠 Free AI Feature Prioritizer (OpenRouter)")
 
 features_input = st.text_area("Enter one product feature per line:")
@@ -16,7 +14,7 @@ framework = st.selectbox("Select framework", ["RICE"])
 def query_openrouter(prompt):
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "HTTP-Referer": "https://openrouter.ai",  # Required for free tier
+        "HTTP-Referer": "https://ai-feature-priotitizer-bhvtjkhnqpvyc3lsebny2b.streamlit.app/",  # Required for free tier
         "Content-Type": "application/json"
     }
     data = {
