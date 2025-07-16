@@ -80,7 +80,7 @@ if features:
         lines = prioritized_text.split("\n")
         rows = []
         for line in lines:
-            match = re.match(r"^(.*?)-\s*RICE Score[:\s]*([\d.]+)", line.strip(), re.IGNORECASE)
+            match = re.match(r"^(.*?)-\s*(\d+)(\s|\(R:)", line.strip())
             if match:
                 feature = match.group(1).strip("•-– ")
                 score = match.group(2)
