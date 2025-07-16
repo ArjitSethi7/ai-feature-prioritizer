@@ -64,27 +64,27 @@ if features:
 
         with st.spinner("\U0001f916 Prioritizing... Please wait"):
             def query_openrouter(prompt):
-    api_key = st.secrets["OPENROUTER_API_KEY"]
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "model": "openrouter/auto",
-        "messages": [{"role": "user", "content": prompt}]
-    }
-    response = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                api_key = st.secrets["OPENROUTER_API_KEY"]
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "model": "openrouter/auto",
+                    "messages": [{"role": "user", "content": prompt}]
+                }
+                response = requests.post("https://openrouter.ai/api/v1/chat/completions",
                              headers=headers, json=data)
-    json_response = response.json()
+                json_response = response.json()
 
-    # Debug print
-    st.markdown("#### 🔍 Raw API Response")
-    st.code(json_response)
+                # Debug print
+                st.markdown("#### 🔍 Raw API Response")
+                st.code(json_response)
 
-    if "choices" not in json_response:
-        raise Exception(f"Unexpected response: {json_response}")
+                if "choices" not in json_response:
+                    raise Exception(f"Unexpected response: {json_response}")
 
-    return json_response["choices"][0]["message"]["content"]
+                return json_response["choices"][0]["message"]["content"]
 
             try:
                 ai_response = query_openrouter(prompt)
