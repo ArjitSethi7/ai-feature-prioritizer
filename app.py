@@ -64,16 +64,34 @@ else:
 
 # --- Run prioritization ---
 if features:
-    if st.button("🚀 Prioritize Features"):
-        prompt = "Prioritize the following features using the RICE framework:\n" + "\n".join(features)
-        prioritized_text = query_openrouter(prompt)
+    if st.button("🚀 Priorize Features", disabled=False):
+        prompt = "Prioritize the following features using the RICE framework. " \
+                 "Only return one line per feature in the format: Feature Name - RICE Score (number only, no explanation). " \
+                 "Sort them by descending RICE Score.\n\n" + "\n".join(features)
 
-        st.subheader("🔢 Prioritized List:")
+        with st.spinner("🤖 Prioritizing features using AI..."):
+            prioritized_text = query_openrouter(prompt)
+
+        st.subheader("🔢 Prioritized Features with RICE Scores")
         st.write(prioritized_text)
 
-        # --- Convert and allow CSV export ---
-        lines = [line.strip("•- ") for line in prioritized_text.split("\n") if line.strip()]
-        result_df = pd.DataFrame(lines, columns=["Prioritized Feature"])
-        csv = result_df.to_csv(index=False).encode("utf-8")
+        # Clean and parse for CSV
+        import re
+        lines = prioritized_text.split("\n")
+        rows = []
+        for line in lines:
+            match = re.match(r"^(.*?)-\s*RICE Score[:\s]*([\d.]+)", line.strip(), re.IGNORECASE)
+            if match:
+                feature = match.group(1).strip("•-– ")
+                score = match.group(2)
+                rows.append((feature, score))
 
-        st.download_button("📥 Download as CSV", data=csv, file_name="prioritized_features.csv", mime="text/csv")
+        if rows:
+            result_df = pd.DataFrame(rows, columns=["Feature", "RICE Score"])
+            st.dataframe(result_df)
+
+            csv = result_df.to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Download as CSV", data=csv, file_name="prioritized_features.csv", mime="text/csv")
+        else:
+            st.warning("⚠️ Could not parse RICE scores properly. Try rephrasing your features.")
+
