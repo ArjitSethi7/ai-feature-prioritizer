@@ -4,7 +4,7 @@ import requests
 from dotenv import load_dotenv
 
 load_dotenv()
-api_key = os.getenv("OPENROUTER_API_KEY")
+api_key = st.secrets["OPENROUTER_API_KEY"]
 
 st.title("🧠 Free AI Feature Prioritizer (OpenRouter)")
 
