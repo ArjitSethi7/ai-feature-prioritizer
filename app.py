@@ -1,97 +1,111 @@
 import streamlit as st
 import pandas as pd
 import requests
+import re
 
-# --- Load OpenRouter API key ---
-api_key = st.secrets["OPENROUTER_API_KEY"]
+st.set_page_config(page_title="RICE Prioritizer", layout="wide")
 
-# --- Query OpenRouter function ---
-def query_openrouter(prompt):
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "Referer": "https://ai-feature-prioritizer.streamlit.app/"
-    }
+# Sidebar info
+with st.sidebar:
+    st.header("ℹ️ About")
+    st.markdown("""
+    This AI assistant helps prioritize features using the **RICE framework**:
+    - **Reach**
+    - **Impact**
+    - **Confidence**
+    - **Effort**
 
-    payload = {
-        "model": "mistralai/mistral-7b-instruct",
-        "messages": [
-            {"role": "user", "content": prompt}
-        ]
-    }
+    Upload or type features → AI ranks them → Download results.
+    Built with 🧠 AI via OpenRouter & Streamlit.
+    """)
 
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers=headers,
-        json=payload
-    )
-
-    try:
-        return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        st.error(f"⚠️ OpenRouter error: {response.text}")
-        return "Error: could not fetch response."
-
-
-# --- Streamlit UI ---
-st.set_page_config(page_title="AI RICE Prioritizer", layout="centered")
 st.title("🧠 AI Feature Prioritization Assistant (RICE Framework)")
-st.write("Prioritize your product features using the RICE framework with AI.")
+st.caption("Made with 💡 OpenRouter + Streamlit | by Arjit Sethi")
+st.markdown("---")
 
-# --- Input mode selection ---
-input_mode = st.radio("Choose how to enter your features:", ["📝 Type manually", "📤 Upload CSV"])
+# Input/output tabs
+tab1, tab2 = st.tabs(["📝 Input Features", "📋 Prioritized Output"])
 
 features = []
 
-# --- Manual input mode ---
-if input_mode == "📝 Type manually":
-    typed_text = st.text_area("Enter one feature per line:")
-    if typed_text.strip():
-        features = [line.strip() for line in typed_text.split("\n") if line.strip()]
+with tab1:
+    input_mode = st.radio("Choose how to enter features:", ["Type manually", "Upload CSV"])
 
-# --- CSV upload mode ---
-else:
-    uploaded_file = st.file_uploader("Upload a CSV file with a 'Feature' column", type=["csv"])
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file)
-        st.write("📄 Uploaded Features:")
-        st.dataframe(df)
+    if input_mode == "Type manually":
+        typed_text = st.text_area("Enter one feature per line:")
+        if typed_text.strip():
+            features = [line.strip() for line in typed_text.split("\n") if line.strip()]
+    else:
+        uploaded_file = st.file_uploader("Upload CSV with a 'Feature' column", type=["csv"])
+        if uploaded_file:
+            df = pd.read_csv(uploaded_file)
+            st.write("📄 Uploaded Features:")
+            st.dataframe(df)
 
-        if "Feature" not in df.columns:
-            st.warning("⚠️ Please make sure your CSV has a column named **'Feature'**.")
-        else:
-            features = df["Feature"].dropna().tolist()
+            if "Feature" not in df.columns:
+                st.warning("⚠️ CSV must have a column named 'Feature'")
+            else:
+                features = df["Feature"].dropna().tolist()
 
-# --- Run prioritization ---
-if features:
-    if st.button("🚀 Priorize Features", disabled=False):
-        prompt = "Prioritize the following features using the RICE framework. " \
-                 "Only return one line per feature in the format: Feature Name - RICE Score (number only, no explanation). " \
-                 "Sort them by descending RICE Score.\n\n" + "\n".join(features)
+# Session state to handle spinner lock
+if "processing" not in st.session_state:
+    st.session_state.processing = False
 
-        with st.spinner("🤖 Prioritizing features using AI..."):
-            prioritized_text = query_openrouter(prompt)
+with tab2:
+    if features:
+        prioritize_btn = st.button("🚀 Prioritize Features", disabled=st.session_state.processing)
 
-        st.subheader("🔢 Prioritized Features with RICE Scores")
-        st.write(prioritized_text)
+        if prioritize_btn:
+            st.session_state.processing = True
 
-        # Clean and parse for CSV
-        import re
-        lines = prioritized_text.split("\n")
-        rows = []
-        for line in lines:
-            match = re.match(r"^(.*?)-\s*(\d+)(\s|\(R:)", line.strip())
-            if match:
-                feature = match.group(1).strip("•-– ")
-                score = match.group(2)
-                rows.append((feature, score))
+            prompt = "Prioritize the following features using the RICE framework. " \
+                     "Only return one line per feature in the format: Feature Name - Score (R: X, I: X, C: X, E: X). " \
+                     "Sort them in descending RICE score. No explanations.\n\n" + "\n".join(features)
 
-        if rows:
-            result_df = pd.DataFrame(rows, columns=["Feature", "RICE Score"])
-            st.dataframe(result_df)
+            with st.spinner("🤖 Prioritizing... Please wait"):
+                def query_openrouter(prompt):
+                    api_key = st.secrets["OPENROUTER_API_KEY"]
+                    headers = {
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json"
+                    }
+                    data = {
+                        "model": "openrouter/auto",
+                        "messages": [{"role": "user", "content": prompt}]
+                    }
+                    response = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                                             headers=headers, json=data)
+                    return response.json()["choices"][0]["message"]["content"]
 
-            csv = result_df.to_csv(index=False).encode("utf-8")
-            st.download_button("📥 Download as CSV", data=csv, file_name="prioritized_features.csv", mime="text/csv")
-        else:
-            st.warning("⚠️ Could not parse RICE scores properly. Try rephrasing your features.")
+                try:
+                    prioritized_text = query_openrouter(prompt)
+                    st.success("✅ Prioritization complete!")
+                    st.markdown("### 🔢 Prioritized Features with RICE Scores")
+                    st.write(prioritized_text)
 
+                    lines = prioritized_text.split("\n")
+                    rows = []
+                    for line in lines:
+                        match = re.match(r"^(.*?)-\s*(\d+)(\s|\(R:)", line.strip())
+                        if match:
+                            feature = match.group(1).strip("•-– ")
+                            score = match.group(2)
+                            rows.append((feature, score))
+
+                    if rows:
+                        result_df = pd.DataFrame(rows, columns=["Feature", "RICE Score"])
+                        st.dataframe(result_df)
+
+                        csv = result_df.to_csv(index=False).encode("utf-8")
+                        st.download_button("📥 Download CSV", data=csv,
+                                           file_name="prioritized_features.csv", mime="text/csv")
+                    else:
+                        st.warning("⚠️ Could not parse RICE scores properly. Try rephrasing your features.")
+
+                except Exception as e:
+                    st.error(f"Something went wrong: {str(e)}")
+
+                st.session_state.processing = False
+
+st.markdown("---")
+st.markdown("Built by [Arjit Sethi](https://www.linkedin.com/in/arjit-sethi/)")
