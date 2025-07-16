@@ -15,7 +15,7 @@ def query_openrouter(prompt):
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://ai-feature-priotitizer-bhvtjkhnqpvyc3lsebny2b.streamlit.app"  # MUST match your Streamlit app domain
+        "Referer": "https://ai-feature-priotitizer-bhvtjkhnqpvyc3lsebny2b.streamlit.app"  # MUST match your Streamlit app domain
     }
 
     payload = {
