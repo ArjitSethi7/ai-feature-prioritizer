@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 api_key = st.secrets["OPENROUTER_API_KEY"]
 
+st.write("🔐 API key loaded:", api_key[:8] + "...")
+
 st.title("🧠 Free AI Feature Prioritizer (OpenRouter)")
 
 features_input = st.text_area("Enter one product feature per line:")
