@@ -5,7 +5,7 @@ import re
 
 # --- Free trial + Password Protection Logic ---
 if "used_once" not in st.session_state:
-    st.session_state.used_once = False
+    st.session_state.used_once = True
 
 PASSWORD = st.secrets.get("APP_PASSWORD", "")
 user_password = st.session_state.get("user_password", "")
