@@ -65,15 +65,42 @@ else:
 # --- Run prioritization ---
 if features:
     if st.button("🚀 Prioritize Features"):
-        prompt = "Prioritize the following features using the RICE framework:\n" + "\n".join(features)
-        prioritized_text = query_openrouter(prompt)
+        with st.spinner("🧠 Thinking... Prioritizing with RICE..."):
 
-        st.subheader("🔢 Prioritized List:")
-        st.write(prioritized_text)
+            if input_mode == "📤 Upload CSV":
+                prompt = (
+                    "You are a product manager. Prioritize the following features using the RICE framework. "
+                    "Return the result as a table with columns: Feature, Reason (based on RICE), and keep any other original metadata. "
+                    "Format the response in markdown table style. Here are the features with metadata:\n\n"
+                    + df.to_csv(index=False)
+                )
+            else:
+                prompt = (
+                    "You are a product manager. Prioritize the following features using the RICE framework. "
+                    "Return a markdown table with columns: Feature and Reason (based on RICE). Here are the features:\n\n"
+                    + "\n".join(features)
+                )
 
-        # --- Convert and allow CSV export ---
-        lines = [line.strip("•- ") for line in prioritized_text.split("\n") if line.strip()]
-        result_df = pd.DataFrame(lines, columns=["Prioritized Feature"])
-        csv = result_df.to_csv(index=False).encode("utf-8")
+            prioritized_text = query_openrouter(prompt)
 
-        st.download_button("📥 Download as CSV", data=csv, file_name="prioritized_features.csv", mime="text/csv")
+        st.subheader("🔢 Prioritized Table:")
+        st.markdown(prioritized_text)
+
+        # --- Parse markdown to DataFrame ---
+        try:
+            result_df = pd.read_csv(pd.compat.StringIO(
+                "\n".join([line for line in prioritized_text.split('\n') if '|' in line and not line.strip().startswith('|---')])
+            ), sep="|", engine="python").dropna(axis=1, how='all')
+
+            result_df.columns = result_df.columns.str.strip()
+            result_df = result_df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
+            st.dataframe(result_df)
+
+            # --- Enable CSV download ---
+            csv = result_df.to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Download Prioritized CSV", data=csv, file_name="prioritized_features.csv", mime="text/csv")
+
+        except Exception as e:
+            st.error("⚠️ Could not parse the table. Please copy manually:")
+            st.code(prioritized_text)
