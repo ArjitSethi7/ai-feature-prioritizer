@@ -71,7 +71,7 @@ if features:
                     "Referrer": "https://ai-feature-prioritizer.streamlit.app/"
                 }
                 data = {
-                    "model": "openrouter/auto",
+                    "model": "mistralai/mistral-7b-instruct",
                     "messages": [{"role": "user", "content": prompt}]
                 }
                 response = requests.post("https://openrouter.ai/api/v1/chat/completions",
