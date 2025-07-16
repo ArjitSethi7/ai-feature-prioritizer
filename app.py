@@ -67,8 +67,13 @@ if features:
                 st.session_state.used_once = True  # Mark free trial as used
 
                 # Parse and display results
-                matches = re.findall(r"^(.*?)-\s*(\d+)\s*\(R:\s*(\d),\s*I:\s*(\d),\s*C:\s*(\d),\s*E:\s*(\d)\)", output, re.MULTILINE)
-                explanations = re.findall(r"Explanation:\s*(.*?)(?=\n[A-Z]|$)", output, re.DOTALL)
+                matches = re.findall(
+                    r"(?P<feature>.+?)\s*[-:–]\s*RICE\s*Score\s*[:\-]?\s*(?P<score>\d+).*?R\s*[:\-]?\s*(\d).*?I\s*[:\-]?\s*(\d).*?C\s*[:\-]?\s*(\d).*?E\s*[:\-]?\s*(\d)",
+                    output,
+                    re.DOTALL | re.IGNORECASE,
+                )
+
+                explanations = re.findall(r"Explanation\s*[:\-]?\s*(.*?)(?=\n\S|$)", output, re.DOTALL)
 
                 if matches:
                     result_df = pd.DataFrame([
@@ -85,7 +90,9 @@ if features:
                     csv = result_df.to_csv(index=False).encode("utf-8")
                     st.download_button("📥 Download CSV", data=csv, file_name="prioritized_features.csv", mime="text/csv")
                 else:
-                    st.error("❌ Could not parse RICE scores. Please try rephrasing your features.")
+                    st.warning("⚠️ We couldn’t parse the AI's RICE scores. You can try rephrasing your features or copying the raw output below.")
+                    st.text_area("Raw AI Output", value=output, height=300)
+                    st.stop()
 
             except Exception as e:
                 st.error(f"Error: {e}")
