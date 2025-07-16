@@ -3,6 +3,14 @@ import pandas as pd
 import requests
 import re
 
+# --- Password Protection ---
+PASSWORD = st.secrets.get("APP_PASSWORD", "")
+user_password = st.text_input("🔐 Enter Access Password:", type="password")
+
+if user_password != PASSWORD:
+    st.warning("This app is private. Please enter the password to continue.")
+    st.stop()
+
 st.set_page_config(page_title="RICE Prioritizer", layout="wide")
 
 # Sidebar info
