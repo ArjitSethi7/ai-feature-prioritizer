@@ -68,7 +68,7 @@ if features:
                 headers = {
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
-                    "referrer": "https://ai-feature-prioritizer.streamlit.app/"
+                    "Referrer": "https://ai-feature-prioritizer.streamlit.app/"
                 }
                 data = {
                     "model": "openrouter/auto",
