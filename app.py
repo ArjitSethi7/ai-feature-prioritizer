@@ -3,8 +3,6 @@ import pandas as pd
 import requests
 import re
 
-st.set_page_config(page_title="RICE Prioritizer", layout="wide")
-
 # --- Free trial + Password Protection Logic ---
 if "used_once" not in st.session_state:
     st.session_state.used_once = False
@@ -14,29 +12,17 @@ user_password = st.session_state.get("user_password", "")
 
 # If user has used once and hasn't authenticated, prompt for password
 if st.session_state.used_once and user_password != PASSWORD:
-    st.warning("🔒 Trial ended. Please enter the password to continue.")
+    st.warning("\U0001f512 Trial ended. Please enter the password to continue.")
     user_password_input = st.text_input("Enter Access Password", type="password")
     if user_password_input == PASSWORD:
         st.session_state.user_password = user_password_input
-        st.success("✅ Access granted.")
+        st.success("\u2705 Access granted.")
     else:
         st.stop()
 
-# Sidebar info
-with st.sidebar:
-    st.header("ℹ️ About")
-    st.markdown("""
-    Prioritize your product features using the **RICE framework**:  
-    - **R**each  
-    - **I**mpact  
-    - **C**onfidence  
-    - **E**ffort
-
-    Upload or type features → AI ranks them → See scores + explanation → Export as CSV.
-    """)
-
-st.title("🧠 AI Feature Prioritization Assistant (RICE Framework)")
-st.caption("Built with 💡 OpenRouter + Streamlit | by Arjit Sethi")
+st.set_page_config(page_title="RICE Prioritizer", layout="wide")
+st.title("\U0001f9e0 AI Feature Prioritization Assistant (RICE Framework)")
+st.caption("Built with \U0001f4a1 OpenRouter + Streamlit | by Arjit Sethi")
 st.markdown("---")
 
 # Input mode
@@ -44,43 +30,39 @@ input_mode = st.radio("Choose how to enter features:", ["Type manually", "Upload
 features = []
 
 if input_mode == "Type manually":
-    typed_text = st.text_area("✍️ Enter one feature per line:")
+    typed_text = st.text_area("\u270d\ufe0f Enter one feature per line:")
     if typed_text.strip():
         features = [line.strip() for line in typed_text.split("\n") if line.strip()]
 else:
-    uploaded_file = st.file_uploader("📄 Upload a CSV file with a 'Feature' column", type=["csv"])
+    uploaded_file = st.file_uploader("\U0001f4c4 Upload a CSV file with a 'Feature' column", type=["csv"])
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
-        st.write("✅ Uploaded Features:")
+        st.write("\u2705 Uploaded Features:")
         st.dataframe(df)
 
         if "Feature" not in df.columns:
-            st.warning("⚠️ Your CSV must have a column named 'Feature'")
+            st.warning("\u26a0\ufe0f Your CSV must have a column named 'Feature'")
         else:
             features = df["Feature"].dropna().tolist()
 
-# Spinner state
 if "processing" not in st.session_state:
     st.session_state.processing = False
 
 if features:
-    prioritize_btn = st.button("🚀 Prioritize Features", disabled=st.session_state.processing)
+    prioritize_btn = st.button("\U0001f680 Prioritize Features", disabled=st.session_state.processing)
 
     if prioritize_btn:
         st.session_state.processing = True
 
         prompt = (
             "You're an expert product manager. Prioritize the following product features using the RICE framework. "
-            "For each feature, return:\n"
-            "1. The feature name\n"
-            "2. Its RICE score (total score)\n"
-            "3. Explanation based on R, I, C, E used\n\n"
-            "Format strictly as:\n"
-            "Feature Name - RICE Score: <number>\nReason: <short explanation>\n\n"
-            f"Features:\n{chr(10).join(features)}"
+            "For each feature, return its name and estimated Reach (R), Impact (I), Confidence (C), Effort (E), and total RICE score.\n"
+            "Use this format strictly:\n"
+            "Feature Name (R: x, I: x, C: x, E: x)\n"
+            "\nFeatures:\n" + "\n".join(features)
         )
 
-        with st.spinner("🤖 Prioritizing... Please wait"):
+        with st.spinner("\U0001f916 Prioritizing... Please wait"):
             def query_openrouter(prompt):
                 api_key = st.secrets["OPENROUTER_API_KEY"]
                 headers = {
@@ -96,57 +78,62 @@ if features:
                 return response.json()["choices"][0]["message"]["content"]
 
             try:
-                prioritized_text = query_openrouter(prompt)
-                st.success("✅ Prioritization complete!")
+                ai_response = query_openrouter(prompt)
+                st.success("\u2705 Prioritization complete!")
 
-                st.markdown("### 📋 Full AI Response")
-                st.code(prioritized_text)
+                # Show raw output for debugging
+                st.markdown("### \U0001f9ea Raw AI Output")
+                st.code(ai_response)
 
-                # Parse output
-                lines = prioritized_text.split("\n")
-                rows = []
-                current_feature = ""
-                current_score = ""
-                current_reason = ""
+                def parse_rice_scores(ai_response):
+                    pattern = r'^(.*?)(?:\s*\(R:\s*(\d+),\s*I:\s*(\d+),\s*C:\s*(\d+),\s*E:\s*(\d+)\))'
+                    matches = re.findall(pattern, ai_response, re.MULTILINE)
 
-                for line in lines:
-                    if " - RICE Score:" in line:
-                        parts = line.split(" - RICE Score:")
-                        current_feature = parts[0].strip("•-– ")
-                        current_score = parts[1].strip()
-                    elif line.lower().startswith("reason:"):
-                        current_reason = line.split(":", 1)[1].strip()
-                        rows.append((current_feature, current_score, current_reason))
+                    parsed = []
+                    for match in matches:
+                        name = match[0].strip(" -1234567890.\n")
+                        reach, impact, confidence, effort = map(int, match[1:])
+                        rice_score = round((reach * impact * confidence) / (effort if effort != 0 else 1), 2)
+                        parsed.append({
+                            "Feature": name,
+                            "RICE Score": rice_score,
+                            "R": reach, "I": impact, "C": confidence, "E": effort
+                        })
+                    return parsed
 
-                if rows:
-                    st.markdown("### 🧠 RICE Score Explanation")
-                    st.markdown("""
-                    - **Reach**: How many users will it impact?
-                    - **Impact**: How much will it move the needle?
-                    - **Confidence**: How confident are we in the estimates?
-                    - **Effort**: How many resources / weeks are needed?
+                parsed_scores = parse_rice_scores(ai_response)
 
-                    The **RICE score** is calculated as:
-                    `Score = (Reach × Impact × Confidence) / Effort`
-                    """)
+                if not parsed_scores:
+                    st.warning("We couldn’t parse the AI's RICE scores. You can try rephrasing your features or copying the raw output below.")
+                    st.stop()
 
-                    result_df = pd.DataFrame(rows, columns=["Feature", "RICE Score", "Reason"])
-                    st.markdown("### 🔢 Prioritized Features with RICE Scores")
-                    st.dataframe(result_df)
+                result_df = pd.DataFrame(parsed_scores)
+                result_df = result_df.sort_values(by="RICE Score", ascending=False)
 
-                    csv = result_df.to_csv(index=False).encode("utf-8")
-                    st.download_button("📥 Download CSV", data=csv,
-                                       file_name="prioritized_features.csv", mime="text/csv")
-                    if response_data:
-                    # (show results here)
-                    st.session_state.used_once = True
-                else:
-                    st.warning("⚠️ Could not parse RICE scores. Try rephrasing your features.")
+                st.markdown("### \U0001f9ea RICE Score Explanation")
+                st.markdown("""
+                - **Reach**: How many users will it impact?
+                - **Impact**: How much will it move the needle?
+                - **Confidence**: How confident are we in the estimates?
+                - **Effort**: How many resources / weeks are needed?
+
+                **RICE score** = (Reach × Impact × Confidence) / Effort
+                """)
+
+                st.markdown("### \U0001f522 Prioritized Features")
+                st.dataframe(result_df[["Feature", "RICE Score"]])
+
+                csv = result_df[["Feature", "RICE Score", "R", "I", "C", "E"]].to_csv(index=False).encode("utf-8")
+                st.download_button("\U0001f4e5 Download CSV", data=csv,
+                                   file_name="prioritized_features.csv", mime="text/csv")
+
+                # Mark free trial used
+                st.session_state.used_once = True
 
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"\u274c Error: {str(e)}")
 
             st.session_state.processing = False
 
 st.markdown("---")
-st.markdown("Made by [Arjit Sethi](https://www.linkedin.com/in/arjitsethi)")
+st.markdown("Made with by [Arjit Sethi](https://www.linkedin.com/in/arjitsethi)")
