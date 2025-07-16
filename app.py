@@ -67,7 +67,8 @@ if features:
                 api_key = st.secrets["OPENROUTER_API_KEY"]
                 headers = {
                     "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "referrer": "https://ai-feature-prioritizer.streamlit.app/"
                 }
                 data = {
                     "model": "openrouter/auto",
